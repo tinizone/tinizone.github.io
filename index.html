@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kết Nối Ví Trust Wallet & Thêm Token</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 10px; background: #222; color: white; margin: 0; }
+        h1 { color: #ff9800; font-size: 24px; margin: 10px 0; }
+        button { background: #ff9800; color: white; border: none; padding: 8px 16px; cursor: pointer; margin: 5px; border-radius: 4px; font-size: 14px; }
+        button:hover { background: #e68a00; }
+        #wallet-address { margin: 10px 0; font-size: 14px; color: #00ff00; word-break: break-all; padding: 0 10px; }
+        .token { margin: 8px 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; }
+        .token img { width: 24px; height: 24px; vertical-align: middle; margin-right: 5px; }
+        .token a { color: #00ff00; text-decoration: none; font-size: 12px; }
+        .token a:hover { text-decoration: underline; }
+        .copy-btn { background: #555; font-size: 12px; padding: 4px 8px; }
+        .copy-btn:hover { background: #777; }
+    </style>
+</head>
+<body>
+    <h1>Kết Nối Ví Trust Wallet & Thêm Token</h1>
+    <button onclick="connectWallet()">🔗 Kết Nối Trust Wallet</button>
+    <div id="wallet-address">Chưa kết nối ví...</div>
+
+    <div class="token">
+        <button onclick="addCotienToken()"><img src="https://raw.githubusercontent.com/tinizone/Logo/refs/heads/main/Cotien256.png" alt="COT"> Thêm Cotien (COT)</button>
+        <a href="https://polygonscan.com/token/0x0d4013b4e2e2f89171bbe956da995757fb5a6678" target="_blank">Polygonscan</a>
+        <button class="copy-btn" onclick="copyAddress('0x0d4013b4e2e2f89171bbe956da995757fb5a6678')">Copy</button>
+    </div>
+    <div class="token">
+        <button onclick="addPixalalaToken()"><img src="https://raw.githubusercontent.com/tinizone/Logo/refs/heads/main/Pi256.png" alt="PIX"> Thêm Pixalala (PIX)</button>
+        <a href="https://polygonscan.com/token/0x1d7e521627cc4955ac8df6fe2fcb45891d0f30b7" target="_blank">Polygonscan</a>
+        <button class="copy-btn" onclick="copyAddress('0x1d7e521627cc4955ac8df6fe2fcb45891d0f30b7')">Copy</button>
+    </div>
+    <div class="token">
+        <button onclick="addTinizoneToken()"><img src="https://raw.githubusercontent.com/tinizone/Logo/refs/heads/main/Tin256.png" alt="TIN"> Thêm Tinizone (TIN)</button>
+        <a href="https://polygonscan.com/token/0xe7d8c8818106a565980315675d7adcb1d8ab1318" target="_blank">Polygonscan</a>
+        <button class="copy-btn" onclick="copyAddress('0xe7d8c8818106a565980315675d7adcb1d8ab1318')">Copy</button>
+    </div>
+
+    <!-- Thư viện ethers.js -->
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.8.0/dist/ethers.umd.min.js"></script>
+
+    <script>
+        let provider, signer, account;
+
+        // Kết nối ví Trust Wallet
+        async function connectWallet() {
+            try {
+                if (!window.ethereum) {
+                    document.getElementById("wallet-address").innerText = "❌ Trust Wallet không được cài đặt hoặc không hỗ trợ kết nối qua trình duyệt!";
+                    return;
+                }
+                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                provider = new ethers.BrowserProvider(window.ethereum);
+                signer = await provider.getSigner();
+                account = await signer.getAddress();
+                document.getElementById("wallet-address").innerText = `✅ Đã kết nối: ${account}`;
+                await switchToPolygon();
+            } catch (error) {
+                document.getElementById("wallet-address").innerText = `❌ Lỗi kết nối: ${error.message || 'Không rõ nguyên nhân'}`;
+            }
+        }
+
+        // Chuyển sang mạng Polygon với symbol POL
+        async function switchToPolygon() {
+            try {
+                await window.ethereum.request({
+                    method: 'wallet_switchEthereumChain',
+                    params: [{ chainId: '0x89' }]
+                });
+            } catch (switchError) {
+                if (switchError.code === 4902) {
+                    await window.ethereum.request({
+                        method: 'wallet_addEthereumChain',
+                        params: [{
+                            chainId: '0x89',
+                            chainName: 'Polygon Mainnet',
+                            rpcUrls: ['https://polygon-rpc.com'],
+                            nativeCurrency: { name: 'POL', symbol: 'POL', decimals: 18 },
+                            blockExplorerUrls: ['https://polygonscan.com']
+                        }]
+                    });
+                } else {
+                    document.getElementById("wallet-address").innerText += ` | Lỗi mạng: ${switchError.message || 'Không rõ nguyên nhân'}`;
+                }
+            }
+        }
+
+        // Thêm token vào Trust Wallet
+        async function addToken(tokenAddress, tokenSymbol, tokenDecimals, tokenImage) {
+            if (!account) {
+                document.getElementById("wallet-address").innerText = "❌ Hãy kết nối ví Trust Wallet trước!";
+                return;
+            }
+            try {
+                await window.ethereum.request({
+                    method: 'wallet_watchAsset',
+                    params: {
+                        type: 'ERC20',
+                        options: {
+                            address: tokenAddress,
+                            symbol: tokenSymbol,
+                            decimals: tokenDecimals,
+                            image: tokenImage
+                        }
+                    }
+                });
+                document.getElementById("wallet-address").innerText += ` | Đã gửi yêu cầu thêm ${tokenSymbol}. Kiểm tra danh sách token trong Trust Wallet!`;
+            } catch (error) {
+                document.getElementById("wallet-address").innerText += ` | Lỗi thêm token: ${error.message || 'Không rõ nguyên nhân'}. Hãy thêm thủ công trong Trust Wallet.`;
+            }
+        }
+
+        function addCotienToken() {
+            addToken("0x0d4013b4e2e2f89171bbe956da995757fb5a6678", "COT", 18, "https://raw.githubusercontent.com/tinizone/Logo/refs/heads/main/Cotien256.png");
+        }
+
+        function addPixalalaToken() {
+            addToken("0x1d7e521627cc4955ac8df6fe2fcb45891d0f30b7", "PIX", 18, "https://raw.githubusercontent.com/tinizone/Logo/refs/heads/main/Pi256.png");
+        }
+
+        function addTinizoneToken() {
+            addToken("0xe7d8c8818106a565980315675d7adcb1d8ab1318", "TIN", 18, "https://raw.githubusercontent.com/tinizone/Logo/refs/heads/main/Tin256.png");
+        }
+
+        function copyAddress(address) {
+            navigator.clipboard.writeText(address).then(() => {
+                document.getElementById("wallet-address").innerText += " | Đã sao chép địa chỉ!";
+            }).catch(() => {
+                document.getElementById("wallet-address").innerText += " | Lỗi sao chép!";
+            });
+        }
+    </script>
+</body>
+</html>
