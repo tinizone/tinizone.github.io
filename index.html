@@ -63,7 +63,7 @@
             }
         }
 
-        // Chuyển sang mạng Polygon với symbol POL
+        // Chuyển sang mạng Polygon
         async function switchToPolygon() {
             try {
                 await window.ethereum.request({
@@ -95,7 +95,7 @@
                 return;
             }
             try {
-                await window.ethereum.request({
+                const wasAdded = await window.ethereum.request({
                     method: 'wallet_watchAsset',
                     params: {
                         type: 'ERC20',
@@ -107,7 +107,11 @@
                         }
                     }
                 });
-                document.getElementById("wallet-address").innerText += ` | Đã gửi yêu cầu thêm ${tokenSymbol}. Kiểm tra danh sách token trong Trust Wallet!`;
+                if (wasAdded) {
+                    document.getElementById("wallet-address").innerText += ` | Đã thêm ${tokenSymbol} thành công!`;
+                } else {
+                    document.getElementById("wallet-address").innerText += ` | Bạn đã hủy thêm ${tokenSymbol}.`;
+                }
             } catch (error) {
                 document.getElementById("wallet-address").innerText += ` | Lỗi thêm token: ${error.message || 'Không rõ nguyên nhân'}. Hãy thêm thủ công trong Trust Wallet.`;
             }
@@ -125,12 +129,34 @@
             addToken("0xe7d8c8818106a565980315675d7adcb1d8ab1318", "TIN", 18, "https://raw.githubusercontent.com/tinizone/Logo/refs/heads/main/Tin256.png");
         }
 
+        // Hàm copy địa chỉ với fallback
         function copyAddress(address) {
-            navigator.clipboard.writeText(address).then(() => {
-                document.getElementById("wallet-address").innerText += " | Đã sao chép địa chỉ!";
-            }).catch(() => {
-                document.getElementById("wallet-address").innerText += " | Lỗi sao chép!";
-            });
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(address)
+                    .then(() => {
+                        document.getElementById("wallet-address").innerText += " | Đã sao chép địa chỉ!";
+                    })
+                    .catch(err => {
+                        fallbackCopy(address);
+                    });
+            } else {
+                fallbackCopy(address);
+            }
+        }
+
+        // Fallback cho trường hợp clipboard API không hoạt động
+        function fallbackCopy(text) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                document.getElementById("wallet-address").innerText += " | Đã sao chép địa chỉ (fallback)!";
+            } catch (err) {
+                document.getElementById("wallet-address").innerText += " | Lỗi sao chép, hãy thử sao chép thủ công!";
+            }
+            document.body.removeChild(textArea);
         }
     </script>
 </body>
